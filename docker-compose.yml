@@ -1,0 +1,123 @@
+version: "3"
+
+services:
+    # ── SPIRE Server ────────────────────────────────────────────────
+    spire-server:
+        image: ghcr.io/spiffe/spire-server:1.12.0
+        container_name: user-spire-server
+        command:
+            - -config
+            - /opt/spire/conf/server/server.conf
+        volumes:
+            - ./spiffe/spire-server-e2e/server.conf:/opt/spire/conf/server/server.conf:ro
+            - ./spiffe/certs/agent-ca.crt.pem:/opt/spire/conf/server/agent-ca.crt.pem:ro
+            - spire-server-data:/opt/spire/data
+        healthcheck:
+            test: ["CMD", "/opt/spire/bin/spire-server", "healthcheck"]
+            interval: 5s
+            timeout: 3s
+            retries: 30
+            start_period: 10s
+        networks:
+            - anser_project_network
+
+    # ── SPIRE Agent ─────────────────────────────────────────────────
+    spire-agent:
+        image: ghcr.io/spiffe/spire-agent:1.12.0
+        container_name: user-spire-agent
+        command:
+            - -config
+            - /opt/spire/conf/agent/agent.conf
+        volumes:
+            - ./spiffe/spire-agent-e2e/agent.conf:/opt/spire/conf/agent/agent.conf:ro
+            - ./spiffe/certs/agent.key.pem:/opt/spire/conf/agent/agent.key.pem:ro
+            - ./spiffe/certs/agent.crt.pem:/opt/spire/conf/agent/agent.crt.pem:ro
+            - spire-agent-sockets:/run/spire/sockets
+        depends_on:
+            spire-server:
+                condition: service_healthy
+        healthcheck:
+            test: ["CMD", "/opt/spire/bin/spire-agent", "healthcheck", "-socketPath", "/run/spire/sockets/agent.sock"]
+            interval: 5s
+            timeout: 3s
+            retries: 30
+            start_period: 15s
+        networks:
+            - anser_project_network
+
+    # ── spiffe-helper sidecar ───────────────────────────────────────
+    user-helper:
+        image: ghcr.io/spiffe/spiffe-helper:0.8.0
+        container_name: user-helper
+        pid: "service:spire-agent"
+        command: ["-config", "/opt/spiffe-helper/helper.conf"]
+        volumes:
+            - ./spiffe/helper/user-service.conf:/opt/spiffe-helper/helper.conf:ro
+            - spire-agent-sockets:/run/spire/sockets:ro
+            - user-certs:/certs
+        depends_on:
+            spire-agent:
+                condition: service_healthy
+        restart: unless-stopped
+        networks:
+            - anser_project_network
+
+    # ── User Service ────────────────────────────────────────────────
+    user-service:
+        image: webdevops/php:8.2
+        platform: linux/x86_64
+        networks:
+            - anser_project_network
+        ports:
+            - 8084:8080
+            - 18083:8443
+        working_dir: /app
+        environment:
+            - WEB_DOCUMENT_ROOT=/app/public
+            - PHP_MEMORY_LIMIT=2048M
+            - PHP_MAX_EXECUTION_TIME=300
+            - PHP_POST_MAX_SIZE=2048M
+            - PHP_UPLOAD_MAX_FILESIZE=2048M
+            # ── SPIFFE / LSVID ──
+            - SPIFFE_ID=spiffe://zt.local/user-service
+            - SPIFFE_SHM_DIR=/certs
+            - LSVID_REQUIRED=0
+        volumes:
+            - './app:/app'
+            - user-certs:/certs:ro
+        command: >
+            bash -c "echo 'Waiting for SVID certs...' && until [ -f /certs/svid_key.pem ]; do sleep 1; done && echo 'Certs ready.' && chmod 776 ./start_service.sh && ./start_service.sh"
+        depends_on:
+            - user-helper
+
+    user_DB:
+        image: postgres:11.12
+        networks:
+            - anser_project_network
+        environment:
+            POSTGRES_DB: user
+            POSTGRES_USER: root
+            POSTGRES_PASSWORD: root
+        volumes:
+            - ./user-db-data:/var/lib/postgresql/data/
+        ports:
+            - "8340:5432"
+        command:
+            [
+                "postgres",
+                "-c",
+                "logging_collector=on",
+                "-c",
+                "log_destination=stderr",
+                "-c",
+                "max_connections=10000"
+            ]
+
+volumes:
+    spire-server-data:
+    spire-agent-sockets:
+    user-certs:
+
+networks:
+    anser_project_network:
+        driver: bridge

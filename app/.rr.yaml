@@ -1,0 +1,25 @@
+version: "2.7"
+
+rpc:
+  listen: tcp://127.0.0.1:6001
+
+server:
+  command: "php Worker.php -f=/app/vendor/monken/codeigniter4-burner/src/FrontLoader.php -a=/app/app/"
+  # env:
+  #   XDEBUG_SESSION: 1
+
+http:
+  address: "0.0.0.0:8080"
+  ssl:
+    address: "0.0.0.0:8443"
+    cert: "/certs/svid.pem"
+    key: "/certs/svid_key.pem"
+    root_ca: "/certs/bundle.pem"
+    client_auth_type: "require_and_verify_client_cert"
+  static:
+    dir: "/app/public"
+    forbid: [".htaccess", ".php"]
+  pool:
+    num_workers: 1
+    # max_jobs: 64
+    # debug: true

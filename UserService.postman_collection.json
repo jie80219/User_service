@@ -1,0 +1,223 @@
+{
+	"info": {
+		"_postman_id": "cf640149-32d3-4c0f-9698-089e1dbe99f8",
+		"name": "UserService",
+		"description": "Anser Demo Service",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
+		"_exporter_id": "29411031"
+	},
+	"item": [
+		{
+			"name": "User",
+			"item": [
+				{
+					"name": "使用者登入",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\" : \"user1@anser.io\", //使用者帳號\n    \"password\" : \"password\" //使用者密碼\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "{{user_service}}/api/v1/user/login"
+					},
+					"response": []
+				},
+				{
+					"name": "取得使用者資料",
+					"request": {
+						"auth": {
+							"type": "apikey",
+							"apikey": {
+								"value": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJBbnNlciIsImF1ZCI6IlVzZXIiLCJzdWIiOiJBbnNlck9yY2hlc3RyYXRpb24iLCJpYXQiOjE2OTMzMjAwMDIsImV4cCI6MTY5MzQwNjQwMiwiZW1haWwiOiJ1c2VyMUBnbWFpbC5jb20iLCJ1X2tleSI6MX0.b7d7a6TXeOmmZIm5jSyUXnLDdan3MRgik96MqYdLwuU",
+								"key": "Authorization"
+							}
+						},
+						"method": "GET",
+						"header": [],
+						"url": "{{user_service}}/api/v1/user"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Wallet",
+			"item": [
+				{
+					"name": "餘額",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-User-key",
+								"value": "{{$u_id}}",
+								"description": "使用者ID",
+								"type": "text"
+							}
+						],
+						"url": "{{user_service}}/api/v1/wallet"
+					},
+					"response": []
+				},
+				{
+					"name": "餘額儲值",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-User-key",
+								"value": "{{$u_id}}",
+								"description": "使用者ID",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "addAmount",
+									"value": "500",
+									"description": "欲新增金額",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{user_service}}/api/v1/wallet",
+							"host": [
+								"{{user_service}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"wallet"
+							],
+							"query": [
+								{
+									"key": "",
+									"value": "",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "扣款",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-User-key",
+								"value": "{{$u_id}}",
+								"description": "使用者ID",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "o_key",
+									"value": "",
+									"description": "訂單ID",
+									"type": "text"
+								},
+								{
+									"key": "total",
+									"value": "200",
+									"description": "扣款金額",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{user_service}}/api/v1/wallet/charge",
+							"host": [
+								"{{user_service}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"wallet",
+								"charge"
+							],
+							"query": [
+								{
+									"key": "",
+									"value": "",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "扣款補償",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-User-key",
+								"value": "{{$u_id}}",
+								"description": "使用者ID",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "o_key",
+									"value": "",
+									"description": "訂單ID",
+									"type": "text"
+								},
+								{
+									"key": "addAmount",
+									"value": "500",
+									"description": "欲新增金額",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{user_service}}/api/v1/wallet/compensate",
+							"host": [
+								"{{user_service}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"wallet",
+								"compensate"
+							],
+							"query": [
+								{
+									"key": "",
+									"value": "",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "$u_id",
+			"value": "1"
+		}
+	]
+}

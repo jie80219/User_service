@@ -1,0 +1,32 @@
+# macOS
+.DS_Store
+
+# Environment / secrets
+app/.env
+
+# SPIFFE certs & keys (do NOT commit)
+spiffe/certs/*.key.pem
+spiffe/certs/*.crt.pem
+spiffe/certs/*.srl
+
+# Database data (dev volume)
+user-db-data/
+
+# Composer dependencies
+app/vendor/
+
+# CodeIgniter runtime
+app/writable/cache/*
+!app/writable/cache/index.html
+app/writable/logs/*
+!app/writable/logs/index.html
+app/writable/session/*
+!app/writable/session/index.html
+app/writable/uploads/*
+!app/writable/uploads/index.html
+
+# IDE / tooling
+.idea/
+.vscode/
+.claude/
+*.swp
