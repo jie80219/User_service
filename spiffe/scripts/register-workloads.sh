@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-: "${SPIRE_SERVER_CONTAINER:=zt-spire-server}"
+: "${SPIRE_SERVER_CONTAINER:=user-spire-server}"
 : "${TRUST_DOMAIN:=zt.local}"
 
 # ── Resolve the agent's SPIFFE ID automatically ──────────────────

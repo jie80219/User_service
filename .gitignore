@@ -12,6 +12,9 @@ spiffe/certs/*.srl
 # Database data (dev volume)
 user-db-data/
 
+# SPIRE persistent data (dev volume)
+.spire-data/
+
 # Composer dependencies
 app/vendor/
 

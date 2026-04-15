@@ -1,26 +1,4 @@
-version: "3"
-
 services:
-    # ── SPIRE Server ────────────────────────────────────────────────
-    spire-server:
-        image: ghcr.io/spiffe/spire-server:1.12.0
-        container_name: user-spire-server
-        command:
-            - -config
-            - /opt/spire/conf/server/server.conf
-        volumes:
-            - ./spiffe/spire-server-e2e/server.conf:/opt/spire/conf/server/server.conf:ro
-            - ./spiffe/certs/agent-ca.crt.pem:/opt/spire/conf/server/agent-ca.crt.pem:ro
-            - spire-server-data:/opt/spire/data
-        healthcheck:
-            test: ["CMD", "/opt/spire/bin/spire-server", "healthcheck"]
-            interval: 5s
-            timeout: 3s
-            retries: 30
-            start_period: 10s
-        networks:
-            - anser_project_network
-
     # ── SPIRE Agent ─────────────────────────────────────────────────
     spire-agent:
         image: ghcr.io/spiffe/spire-agent:1.12.0
@@ -30,12 +8,10 @@ services:
             - /opt/spire/conf/agent/agent.conf
         volumes:
             - ./spiffe/spire-agent-e2e/agent.conf:/opt/spire/conf/agent/agent.conf:ro
-            - ./spiffe/certs/agent.key.pem:/opt/spire/conf/agent/agent.key.pem:ro
-            - ./spiffe/certs/agent.crt.pem:/opt/spire/conf/agent/agent.crt.pem:ro
+            - ./spiffe/certs/user-agent.key.pem:/opt/spire/conf/agent/agent.key.pem:ro
+            - ./spiffe/certs/user-agent.crt.pem:/opt/spire/conf/agent/agent.crt.pem:ro
             - spire-agent-sockets:/run/spire/sockets
-        depends_on:
-            spire-server:
-                condition: service_healthy
+            - spire-agent-data:/opt/spire/data
         healthcheck:
             test: ["CMD", "/opt/spire/bin/spire-agent", "healthcheck", "-socketPath", "/run/spire/sockets/agent.sock"]
             interval: 5s
@@ -114,10 +90,10 @@ services:
             ]
 
 volumes:
-    spire-server-data:
+    spire-agent-data:
     spire-agent-sockets:
     user-certs:
 
 networks:
     anser_project_network:
-        driver: bridge
+        external: true
