@@ -18,10 +18,14 @@ services:
             timeout: 3s
             retries: 30
             start_period: 15s
+        restart: unless-stopped
         networks:
             - anser_project_network
 
     # ── spiffe-helper sidecar ───────────────────────────────────────
+    # NOTE: user-helper 共享 spire-agent 的 PID namespace。
+    # 若 spire-agent 被 recreate（非僅 restart），user-helper 也必須 recreate，
+    # 否則 PID namespace 參照會失效。請使用 restart-helper.sh 處理此情境。
     user-helper:
         image: ghcr.io/spiffe/spiffe-helper:0.8.0
         container_name: user-helper
@@ -62,14 +66,23 @@ services:
             - './app:/app'
             - user-certs:/certs:ro
         command: >
-            bash -c "echo 'Waiting for SVID certs...' && until [ -f /certs/svid_key.pem ]; do sleep 1; done && echo 'Certs ready.' && chmod 776 ./start_service.sh && ./start_service.sh"
+            bash -c "chmod 776 ./start_service.sh && ./start_service.sh"
         depends_on:
-            - user-helper
+            user-helper:
+                condition: service_started
+        healthcheck:
+            test: ["CMD-SHELL", "curl -so /dev/null -w '%{http_code}' http://127.0.0.1:8080/ | grep -qE '^[2-4]'"]
+            interval: 10s
+            timeout: 5s
+            retries: 6
+            start_period: 120s
+        restart: unless-stopped
 
     user_DB:
         image: postgres:11.12
         networks:
             - anser_project_network
+        restart: unless-stopped
         environment:
             POSTGRES_DB: user
             POSTGRES_USER: root

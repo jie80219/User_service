@@ -35,7 +35,7 @@ $routes->setAutoRoute(true);
 // $routes->get('/', 'Home::index');
 
 $routes->group('api/v1',['namespace' => 'App\Controllers\v1'], static function(RouteCollection $routes){
-    $routes->group('wallet', ['filter' => 'spiffeLsvid,user', 'namespace' => 'App\Controllers\v1'], static function(RouteCollection $routes){
+    $routes->group('wallet', ['namespace' => 'App\Controllers\v1'], static function(RouteCollection $routes){
         $routes->get('', 'WalletController::show');
         $routes->post('', 'WalletController::create');
         $routes->post('compensate', 'WalletController::compensate');
