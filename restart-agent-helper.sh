@@ -12,10 +12,13 @@
 #    ./restart-agent-helper.sh --clean --verify
 #    ./restart-agent-helper.sh --help
 #
-#  Auto-recovery: if spire-agent fails to become healthy and its log shows a
-#  stale trust-bundle error (typically after zt-spire-server rotated its CA),
-#  the script will automatically wipe the agent cache volume and retry once.
-#  Use --clean only if you want to force the wipe up front.
+#  Auto-recovery: if spire-agent fails to become healthy, the script will
+#  automatically wipe the agent cache volume and retry once. The stale
+#  trust-bundle error (typically after zt-spire-server rotated its CA) is the
+#  overwhelmingly common cause; the recovery is also harmless for other
+#  failure modes (cert/network), so we wipe whenever health times out.
+#  Use --clean only if you want to force the wipe up front (skipping the
+#  initial health attempt entirely).
 #
 #  Environment overrides:
 #    CENTRAL_SERVER   (default: zt-spire-server)
@@ -59,8 +62,23 @@ wait_agent_healthy() {
     return 1
 }
 
+# Inspect ALL agent logs (no --tail) for a stale-bundle pattern. We capture
+# logs into a variable first so a transient `docker logs` failure or empty
+# buffer doesn't poison the calling `if` under `set -euo pipefail` (a single
+# grep miss at the wrong moment used to silently fall through to the fatal
+# branch). Echoes the matched line(s) to stderr for diagnostics.
 agent_has_stale_bundle() {
-    docker logs --tail 200 user-spire-agent 2>&1 | grep -Eq "$STALE_BUNDLE_RE"
+    local logs match
+    logs="$(docker logs user-spire-agent 2>&1 || true)"
+    if [ -z "$logs" ]; then
+        return 1
+    fi
+    match="$(echo "$logs" | grep -E "$STALE_BUNDLE_RE" | tail -3 || true)"
+    if [ -n "$match" ]; then
+        echo "$match" | sed 's/^/    /' >&2
+        return 0
+    fi
+    return 1
 }
 
 wipe_agent_cache() {
@@ -150,8 +168,22 @@ docker compose up -d --force-recreate spire-agent >/dev/null
 log "Waiting for spire-agent to be healthy (timeout=${HEALTH_TIMEOUT}s)..."
 if wait_agent_healthy "$HEALTH_TIMEOUT"; then
     log "spire-agent is healthy."
-elif [ "$CLEAN" = "0" ] && agent_has_stale_bundle; then
-    log "Detected stale trust bundle (zt-spire-server CA likely rotated) — auto-recovering..."
+elif [ "$CLEAN" = "1" ]; then
+    err "spire-agent did not become healthy within ${HEALTH_TIMEOUT}s after a clean wipe — bailing"
+    docker logs --tail 30 user-spire-agent || true
+    exit 1
+else
+    # Health timed out. Try to identify the cause from logs, but don't gate the
+    # auto-wipe on the pattern matching — when the agent is in a tight crash/
+    # restart loop, `docker logs` can race against a fresh restart and miss the
+    # error window (this is what bit us in the original implementation).
+    if agent_has_stale_bundle; then
+        log "Detected stale trust bundle (zt-spire-server CA likely rotated) — auto-recovering..."
+    else
+        log "Health timeout without a recognizable stale-bundle log line — auto-wiping anyway."
+        log "Recent agent logs (last 30 lines):"
+        docker logs --tail 30 user-spire-agent 2>&1 | sed 's/^/    /' || true
+    fi
     wipe_agent_cache || exit 1
     log "Restarting user-spire-agent with fresh cache..."
     docker compose up -d --force-recreate spire-agent >/dev/null
@@ -162,10 +194,6 @@ elif [ "$CLEAN" = "0" ] && agent_has_stale_bundle; then
         docker logs --tail 30 user-spire-agent || true
         exit 1
     fi
-else
-    err "spire-agent did not become healthy within ${HEALTH_TIMEOUT}s"
-    docker logs --tail 30 user-spire-agent || true
-    exit 1
 fi
 
 # ── 3.5 Ensure workload entry points at OUR agent ─────────────────
