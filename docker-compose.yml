@@ -11,7 +11,6 @@ services:
             - ./spiffe/certs/user-agent.key.pem:/opt/spire/conf/agent/agent.key.pem:ro
             - ./spiffe/certs/user-agent.crt.pem:/opt/spire/conf/agent/agent.crt.pem:ro
             - spire-agent-sockets:/run/spire/sockets
-            - spire-agent-data:/opt/spire/data
         healthcheck:
             test: ["CMD", "/opt/spire/bin/spire-agent", "healthcheck", "-socketPath", "/run/spire/sockets/agent.sock"]
             interval: 5s
@@ -103,7 +102,6 @@ services:
             ]
 
 volumes:
-    spire-agent-data:
     spire-agent-sockets:
     user-certs:
 
